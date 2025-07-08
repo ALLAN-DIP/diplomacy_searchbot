@@ -9,6 +9,15 @@ from typing import Dict, Optional, TypeVar
 X = TypeVar("X")
 
 
+def normalize_p_dict(distribution: Dict[X, float]) -> Dict[X, float]:
+    """
+    Normalize distribution to sum to 1
+    """
+    sump = sum(distribution.values())
+    distribution = {power: (p / sump) for power, p in distribution.items()}
+
+    return distribution
+
 def sample_p_dict(d: Dict[X, float], *, rng: Optional[np.random.RandomState] = None) -> X:
     if abs(sum(d.values()) - 1) > 0.001:
         raise ValueError(f"Values sum to {sum(d.values())}")

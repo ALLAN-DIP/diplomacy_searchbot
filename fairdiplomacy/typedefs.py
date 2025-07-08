@@ -1,4 +1,5 @@
 from typing import Any, Tuple, Dict, List
+from fairdiplomacy.timestamp import Timestamp
 
 Power = str
 Action = Tuple[str, ...]  # a set of orders

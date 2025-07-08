@@ -26,6 +26,8 @@ message ModelSampledAgent {
 
   // Optional. Use FP16 at inference time for everything.
   optional bool half_precision = 5 [ default = false ];
+
+  optional PlausibleOrderSampling plausible_orders_cfg = 6;
 }
 
 message ModelRollouts {

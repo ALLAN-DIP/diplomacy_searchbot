@@ -1,6 +1,11 @@
 # Don't change this anymore -- create a new protoxt for new default configs.
 # Keeping this for posterity.
 model_sampled {
-    model_path: "blueprint.pt"
-    temperature: 0.1
+  model_path: "/home/ubuntu/github/gpu/diplomacy_searchbot/checkpoint.pth"
+  temperature: 0.1
+  plausible_orders_cfg {
+    n_plausible_orders: 30
+    max_actions_units_ratio: 3.5
+    req_size: 32
+  }
 }

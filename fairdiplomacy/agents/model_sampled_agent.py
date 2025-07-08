@@ -6,9 +6,10 @@
 import torch
 
 from conf import agents_cfgs
-from fairdiplomacy.game import sort_phase_key
 from fairdiplomacy.agents.base_agent import BaseAgent
+
 from fairdiplomacy.agents.model_wrapper import ModelWrapper
+from fairdiplomacy.agents.plausible_order_sampling import PlausibleOrderSampler, renormalize_policy
 from fairdiplomacy.models.consts import POWERS
 from fairdiplomacy.utils.thread_pool_encoding import FeatureEncoder
 
@@ -25,6 +26,10 @@ class ModelSampledAgent(BaseAgent):
         self.top_p = cfg.top_p
         self.device = device
         self.input_encoder = FeatureEncoder()
+
+        self.order_sampler = PlausibleOrderSampler(
+            cfg.plausible_orders_cfg, model=self.model
+        )
 
     def get_orders(self, game, power, **kwargs):
         if len(game.get_orderable_locations().get(power, [])) == 0:
@@ -45,3 +50,9 @@ class ModelSampledAgent(BaseAgent):
         actions, _, _ = self.model.do_model_request(inputs, temperature=temperature, top_p=top_p)
         actions = actions[0]  # batch dim
         return {p: a for p, a in zip(POWERS, actions) if p in powers}
+    
+    def get_plausible_orders_policy(self, game):
+        # Determine the set of plausible actions to consider for each power
+        policy = self.order_sampler.sample_orders(game)
+
+        return policy

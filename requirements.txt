@@ -28,3 +28,7 @@ requests
 grpcio==1.15.0
 grpcio-tools==1.15.0
 submitit~=1.4
+
+# MILA advisor deps
+chiron-utils @ git+https://github.com/ALLAN-DIP/chiron-utils.git@7afb0f9bffc88123428fd69f49befd03bb752457
+#diplomacy @ git+https://github.com/ALLAN-DIP/diplomacy.git@aa6055fe9b933bd393a0339568e102534bb2009c
