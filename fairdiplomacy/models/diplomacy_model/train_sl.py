@@ -207,7 +207,7 @@ def validate(net, val_set, policy_loss_fn, value_loss_fn, batch_size, value_loss
 
         for batch_idxs in torch.arange(len(val_set)).split(batch_size):
             batch = val_set[batch_idxs]
-            batch = DataFields({k: v.to(net_device) for k, v in batch.items()})
+            batch = DataFields({k: v.to(net_device) for k, v in batch.items() if k != "all_powers"})
             y_actions = batch["y_actions"]
             if y_actions.shape[0] == 0:
                 logger.warning(
@@ -511,29 +511,29 @@ def get_datasets_from_cfg(args):
     val_dataset = [val_dataset]
 
     # only t gets added
-    if args.extra_train_data_caches:
-        for path in args.extra_train_data_caches:
-            train_dataset.append(cached_torch_load(path)[0])
-            logger.info(f"Append train dataset: {train_dataset[-1].stats_str()}")
+    #if args.extra_train_data_caches:
+    #    for path in args.extra_train_data_caches:
+    #        train_dataset.append(cached_torch_load(path)[0])
+    #        logger.info(f"Append train dataset: {train_dataset[-1].stats_str()}")
 
     # t, v get added to their respective data sets
-    if args.glob_append_data_cache:
-        for path in glob.glob(args.glob_append_data_cache):
-            t, v = cached_torch_load(path)
-            train_dataset.append(t)
-            logger.info(f"Append train dataset: {train_dataset[-1].stats_str()}")
-            if v is not None:
-                val_dataset.append(v)
-                logger.info(f"Append val dataset: {val_dataset[-1].stats_str()}")
+    #if args.glob_append_data_cache:
+    #    for path in glob.glob(args.glob_append_data_cache):
+    #        t, v = cached_torch_load(path)
+    #        train_dataset.append(t)
+    #        logger.info(f"Append train dataset: {train_dataset[-1].stats_str()}")
+    #        if v is not None:
+    #            val_dataset.append(v)
+    #            logger.info(f"Append val dataset: {val_dataset[-1].stats_str()}")
 
     # both t, v get added to val set
-    if args.glob_append_data_cache_as_val:
-        for path in glob.glob(args.glob_append_data_cache_as_val):
-            t, v = cached_torch_load(path)
-            for x in [t, v]:
-                if x is not None:
-                    val_dataset.append(x)
-                    logger.info(f"Append val dataset: {val_dataset[-1].stats_str()}")
+    #if args.glob_append_data_cache_as_val:
+    #    for path in glob.glob(args.glob_append_data_cache_as_val):
+    #        t, v = cached_torch_load(path)
+    #        for x in [t, v]:
+    #            if x is not None:
+    #                val_dataset.append(x)
+    #                logger.info(f"Append val dataset: {val_dataset[-1].stats_str()}")
 
     # concat datasets
     train_dataset = (
@@ -544,9 +544,9 @@ def get_datasets_from_cfg(args):
 
     # extra val data caches, returned separately
     extra_val_datasets = {}
-    for name, path in args.extra_val_data_caches.items():
-        extra_val_datasets[name] = cached_torch_load(path)[1]
-        logger.info(f"Extra val dataset ({name}): {extra_val_datasets[name].stats_str()}")
+    #for name, path in args.extra_val_data_caches.items():
+    #    extra_val_datasets[name] = cached_torch_load(path)[1]
+    #    logger.info(f"Extra val dataset ({name}): {extra_val_datasets[name].stats_str()}")
 
     # Clear the cache.
     cache = {}

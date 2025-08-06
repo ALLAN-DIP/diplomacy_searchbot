@@ -22,7 +22,7 @@ vector<PhaseData> Game::get_phase_history() {
   for (auto &it : state_history_) {
     string name = it.first.to_string();
     r.push_back(
-        PhaseData(*it.second, *order_history_[name], message_history_[name]));
+        PhaseData(*it.second, *order_history_[name], message_history_[name], *order_cicero_history_[name]));
   }
 
   return r;

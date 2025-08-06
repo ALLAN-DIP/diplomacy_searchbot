@@ -1,0 +1,14 @@
+build_db_cache {
+    dataset_params: {
+        num_dataloader_workers: 20;
+        debug_only_opening_phase: false;
+        value_decay_alpha: 1.0;
+        only_with_min_final_score: 0;
+        only_last_phase: False;
+        get_cicero_orders: True;
+    }
+
+    glob: "/home/ubuntu/data/webdip/json_henry/*.json"
+    out_path: "/home/ubuntu/data/webdip/cache/data_cache_henry.pt"
+    val_set_pct: 0.01
+}

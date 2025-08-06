@@ -150,6 +150,9 @@ message NoPressDatasetParams {
   // (only for dataset with player ratings)
   optional float min_rating_percentile = 13 [ default = 0 ];
 
+  // If true, train using orders from Cicero
+  optional bool get_cicero_orders = 14 [ default = false ];
+
   // DEPRECATED
   optional string data_dir = 500 [ deprecated = true ];
 }

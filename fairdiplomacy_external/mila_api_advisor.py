@@ -97,9 +97,6 @@ class milaWrapper:
         logger.info(f'Randomly choosing from advice levels: {advice_levels}')
         self.advice_level = random.choice(advice_levels)
         await self.send_log(f'Assigning Blueprint to {self.power_to_advise} and advising at level {self.advice_level}')
-        # write to json
-        #if not os.path.exists(file_dir):
-        #    os.makedirs(file_dir)
         with open(file_dir, 'w') as f:
             advisor_dict = {'assign_phase': self.game.get_current_phase(), 'power_to_advise':self.power_to_advise, 'advice_level':self.advice_level}
             json.dump(advisor_dict, f, indent=4)
@@ -186,7 +183,7 @@ class milaWrapper:
                 await self.send_log(f'process dipcc game {self.dipcc_current_phase} to catch up with a current phase in mila {self.game.get_current_phase()}') 
                 if power_name is None:
                     power_name = self.get_curr_power_to_advise()
-                agent_orders = self.player.get_orders(self.dipcc_game, power_name)
+                agent_orders = self.agent.get_orders(self.dipcc_game, power_name)
                 self.dipcc_game.set_orders(power_name, agent_orders)
                 self.dipcc_game.process()
                 self.dipcc_current_phase = self.dipcc_game.get_current_phase()
@@ -207,8 +204,6 @@ class milaWrapper:
                 self.chiron_agent.suggestion_type = self.chiron_type
                 self.chiron_agent.power_name = power_name
                 self.dipcc_game = self.start_dipcc_game(power_name)
-                #self.player = Player(self.agent, power_name)
-                self.player = self.agent #TMP
                 self.dipcc_current_phase = self.dipcc_game.get_current_phase()
 
             await self.chiron_agent.declare_suggestion_type()
@@ -292,13 +287,11 @@ class milaWrapper:
     async def predict_order_probabilities(self) -> None:
         """Provide advice on the probability of orders for individual provinces."""
         # Calculate probabilities for _sets_ of orders
-        policies = self.player.get_plausible_orders_policy(self.dipcc_game)
+        policies = self.agent.get_plausible_orders_policy(self.dipcc_game)
 
         # Calculate probabilities for individual orders
         # An order's probability is the probability of the most likely set of orders
         # that the given order is included in
-        logger.info("POLICIES")
-        logger.info(policies)
         provinces: Dict[str, Dict[str, float]] = defaultdict(lambda: defaultdict(lambda: 0))
         for policy in policies.values():
             for orders, prob in policy.items():
@@ -312,8 +305,6 @@ class milaWrapper:
             province: milaWrapper.normalize_order_probabilities(provinces[province])
             for province in sorted(provinces)
         }
-        logger.info("PROVINCES")
-        logger.info(provinces)
         for province, order_probabilities in provinces.items():
             predicted_orders = {}
             max_probability = max(order_probabilities.values())
@@ -326,7 +317,7 @@ class milaWrapper:
             await self.chiron_agent.suggest_orders_probabilities(province, predicted_orders)
 
     async def suggest_move(self, power_name):
-        agent_orders = list(self.player.get_orders(self.dipcc_game, power_name))
+        agent_orders = list(self.agent.get_orders(self.dipcc_game, power_name))
         if agent_orders != self.prev_suggest_moves:
             logger.info(f'Sending move advice at {round(time.time() * 1_000_000)}')
             await self.chiron_agent.suggest_orders(agent_orders)
@@ -338,7 +329,7 @@ class milaWrapper:
         logger.info(f'Human has set orders: {cond_orders}; check if all orderable locations ({orderable_locs}) are set')
         if len(cond_orders) != 0 and len(cond_orders) != len(orderable_locs):
             # find if cond_orders are partially presented in bp_policy or rl_policy
-            policy = self.player.get_plausible_orders_policy(self.dipcc_game)[power_name]
+            policy = self.agent.get_plausible_orders_policy(self.dipcc_game)[power_name]
             logger.info(f'Searching for conditional orders using {cond_orders} in {power_name}\'s policy: {policy}')
             hit = False
             best_cond_action = None
@@ -657,7 +648,7 @@ def main() -> None:
     )
 
     mila = milaWrapper()
-    
+
     while True:
         try:
             asyncio.run(

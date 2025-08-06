@@ -198,6 +198,9 @@ private:
   Scoring scoring_system_ = Scoring::SOS;
   bool is_full_press_ = true;
   std::string map_name_ = "standard";
+  std::map<Phase,
+           std::shared_ptr<const std::unordered_map<Power, std::vector<Order>>>>
+      order_cicero_history_;
 };
 
 } // namespace dipcc

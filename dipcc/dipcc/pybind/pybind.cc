@@ -176,6 +176,7 @@ PYBIND11_MODULE(pydipcc, m) {
       .def_property_readonly("state", &PhaseData::py_get_state)
       .def_property_readonly("orders", &PhaseData::py_get_orders)
       .def_property_readonly("messages", &PhaseData::py_get_messages)
+      .def_property_readonly("orders_cicero", &PhaseData::py_get_orders_cicero)
       .def("get_scores",
            [](PhaseData &phase_data, int scoring_system) {
              return phase_data.get_scores(static_cast<Scoring>(scoring_system));

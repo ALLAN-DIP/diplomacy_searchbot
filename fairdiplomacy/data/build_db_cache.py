@@ -66,14 +66,12 @@ def build_db_cache_from_cfg(cfg):
 
     if len(val_game_ids) > 0:
         logging.info("Building val dataset")
-        val_dataset = Dataset(game_ids=val_game_ids, **kwargs)
-        val_dataset.preprocess()
+        val_dataset = Dataset(game_ids=val_game_ids, metadata=game_metadata, cfg=no_press_cfg, use_validation=True)
     else:
         val_dataset = None
 
     logging.info("Building train dataset")
-    train_dataset = Dataset(game_ids=train_game_ids, **kwargs)
-    train_dataset.preprocess()
+    train_dataset = Dataset(game_ids=train_game_ids, metadata=game_metadata, cfg=no_press_cfg, use_validation=False)
 
     pathlib.Path(cfg.out_path).parent.mkdir(exist_ok=True, parents=True)
 

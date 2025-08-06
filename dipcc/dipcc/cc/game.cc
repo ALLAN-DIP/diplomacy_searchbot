@@ -313,6 +313,17 @@ Game::Game(const string &json_str) {
           std::make_shared<const std::unordered_map<Power, std::vector<Order>>>(
               orders_this_phase);
 
+      std::unordered_map<Power, std::vector<Order>> orders_cicero_this_phase;
+      for (auto &it : j_phase["orders_cicero"].items()) {
+        Power power = power_from_str(it.key());
+        for (auto &j_order : it.value()) {
+          orders_cicero_this_phase[power].push_back(Order(j_order));
+        }
+      }
+      order_cicero_history_[phase_str] =
+          std::make_shared<const std::unordered_map<Power, std::vector<Order>>>(
+              orders_cicero_this_phase);
+
       if (j_phase.find("messages") != j_phase.end()) {
         for (auto &j_msg : j_phase["messages"]) {
           JCHECK(message_history_[phase_str].find(j_msg["time_sent"]) ==

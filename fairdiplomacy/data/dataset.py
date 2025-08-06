@@ -38,7 +38,7 @@ LOC_IDX = {loc: idx for idx, loc in enumerate(LOCS)}
 
 class Dataset(torch.utils.data.Dataset):
     def __init__(
-        self, cfg: conf_cfgs.NoPressDatasetParams, *, use_validation: bool, all_powers=False
+        self, cfg: conf_cfgs.NoPressDatasetParams, *, use_validation: bool, game_ids: list=None, metadata=None, all_powers=False
     ):
         torch.set_num_threads(1)
 
@@ -50,6 +50,7 @@ class Dataset(torch.utils.data.Dataset):
         self.value_dir = cfg.value_dir
         self.limit_n_games = cfg.limit_n_games
         self.all_powers = all_powers
+        self.get_cicero_orders = cfg.get_cicero_orders
 
         game_data_path = cfg.val_set_path if use_validation else cfg.train_set_path
 
@@ -61,9 +62,12 @@ class Dataset(torch.utils.data.Dataset):
         #     self.cf_agent = None
         self.cf_agent = None
 
-        logging.info(f"Reading metadata from {cfg.metadata_path}")
-        with open(cfg.metadata_path) as meta_f:
-            self.game_metadata = json.load(meta_f)
+        if metadata==None:
+            logging.info(f"Reading metadata from {cfg.metadata_path}")
+            with open(cfg.metadata_path) as meta_f:
+                self.game_metadata = json.load(meta_f)
+        else:
+            self.game_metadata = metadata
 
         # Metadata keys are sometimes paths, sometimes int. Be consistent here.
         extract_game_id_fn = (
@@ -81,27 +85,59 @@ class Dataset(torch.utils.data.Dataset):
             n_games = self.limit_n_games
         else:
             logging.info("Skimming games data to get # games")
-            with open(game_data_path) as f:
-                n_games = 0
-                for _ in f:
-                    n_games += 1
+            if game_ids==None:
+                with open(game_data_path) as f:
+                    n_games = 0
+                    for _ in f:
+                        n_games += 1
+            else:
+                n_games = len(game_ids)
             logging.info(f"Found {n_games} games")
 
-        def read_data_lines(lines):
-            for i, line in enumerate(lines):
-                if self.limit_n_games > 0 and i >= self.limit_n_games:
-                    return
-                game_path, game_json = line.split(" ", 1)
-                if game_path in self.game_metadata:
-                    yield game_path, game_json
-                else:
-                    game_id = extract_game_id_fn(game_path)
-                    if game_id in self.game_metadata:
-                        yield game_id, game_json
+        if game_ids == None:
+            def read_data_lines(lines):
+                for i, line in enumerate(lines):
+                    if self.limit_n_games > 0 and i >= self.limit_n_games:
+                        return
+                    game_path, game_json = line.split(" ", 1)
+                    logging.info(f"game_path: {game_path}, game_json: {game_json}")
+                    if game_path in self.game_metadata:
+                        yield game_path, game_json
                     else:
-                        logging.debug(f"Skipping game id not in metadata: {game_id}")
+                        game_id = extract_game_id_fn(game_path)
+                        if game_id in self.game_metadata:
+                            yield game_id, game_json
+                        else:
+                            logging.debug(f"Skipping game id not in metadata: {game_id}")
 
-        with open(game_data_path) as f:
+            with open(game_data_path) as f:
+                encoded_game_tuples = joblib.Parallel(n_jobs=cfg.num_dataloader_workers)(
+                    joblib.delayed(encode_game)(
+                        game_id,
+                        game_json,
+                        value_dir=self.value_dir,
+                        only_with_min_final_score=self.only_with_min_final_score,
+                        cf_agent=self.cf_agent,
+                        n_cf_agent_samples=self.n_cf_agent_samples,
+                        value_decay_alpha=self.value_decay_alpha,
+                        input_valid_power_idxs=self.get_valid_power_idxs(game_id),
+                        game_metadata=self.game_metadata[game_id],
+                        exclude_n_holds=self.exclude_n_holds,
+                        all_powers=self.all_powers,
+                        get_cicero_orders=self.get_cicero_orders,
+                    )
+                    for game_id, game_json in tqdm(read_data_lines(f), total=n_games)
+                )
+        else:
+            def read_data_game_paths(game_paths):
+                for i, game_path in enumerate(game_paths):
+                    if self.limit_n_games > 0 and i >= self.limit_n_games:
+                        return
+                    with open(game_path) as f:
+                        game_json = f.readline()
+                        game_id = extract_game_id_fn(game_path)
+                        yield game_id, game_json
+
             encoded_game_tuples = joblib.Parallel(n_jobs=cfg.num_dataloader_workers)(
                 joblib.delayed(encode_game)(
                     game_id,
@@ -115,8 +151,9 @@ class Dataset(torch.utils.data.Dataset):
                     game_metadata=self.game_metadata[game_id],
                     exclude_n_holds=self.exclude_n_holds,
                     all_powers=self.all_powers,
+                    get_cicero_orders=self.get_cicero_orders,
                 )
-                for game_id, game_json in tqdm(read_data_lines(f), total=n_games)
+                for game_id, game_json in tqdm(read_data_game_paths(game_ids), total=n_games)
             )
 
         # Filter for games with valid phases
@@ -244,6 +281,7 @@ def encode_game(
     game_metadata,
     exclude_n_holds,
     all_powers: bool,
+    get_cicero_orders: bool,
 ) -> Optional[DataFields]:
     torch.set_num_threads(1)
     encoder = FeatureEncoder()
@@ -272,6 +310,7 @@ def encode_game(
             exclude_n_holds=exclude_n_holds,
             power_values=power_values[phase_names[phase_idx]] if power_values else None,
             all_powers=all_powers,
+            get_cicero_orders = get_cicero_orders,
         )
         for phase_idx in range(num_phases)
     ]
@@ -311,6 +350,7 @@ def encode_phase(
     exclude_n_holds,
     power_values=None,
     all_powers: bool,
+    get_cicero_orders: bool,
 ):
     """
     Arguments:
@@ -344,7 +384,9 @@ def encode_phase(
 
     # get actions from phase, or from cf_agent if set
     joint_action_samples = (
-        {power: [phase.orders.get(power, [])] for power in POWERS}
+        {power: ([phase.orders_cicero.get(power, [])] 
+                if get_cicero_orders 
+                else [phase.orders.get(power, [])]) for power in POWERS}
         if cf_agent is None
         else get_cf_agent_order_samples(rolled_back_game, phase.name, cf_agent, n_cf_agent_samples)
     )
@@ -568,7 +610,7 @@ def encode_weighted_sos_scores(game, phase_idx, value_decay_alpha):
         weight *= value_decay_alpha
 
     # fill in remaining weight with final score
-    final_sq_scores = torch.FloatTensor(game.get_square_scores())
+    final_sq_scores = torch.FloatTensor(game.get_scores(Game.SCORING_SOS))
     y_final_scores[0, :] += remaining * final_sq_scores
 
     return y_final_scores

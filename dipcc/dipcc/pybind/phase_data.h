@@ -44,11 +44,24 @@ public:
     messages_ = messages;
   }
 
+  PhaseData(const GameState &state,
+            const std::unordered_map<Power, std::vector<Order>> &orders,
+            const std::map<uint64_t, Message> &messages,
+            const std::unordered_map<Power, std::vector<Order>> &orders_cicero) {
+    name_ = state.get_phase().to_string();
+    state_ = state;
+    orders_ = orders;
+    messages_ = messages;
+    orders_cicero_ = orders_cicero;
+  }
+
   py::dict py_get_state() { return py_state_to_dict(state_); }
 
   py::dict py_get_orders() { return py_orders_to_dict(orders_); }
 
   py::dict py_get_messages() { return py_messages_to_phase_dict(messages_); }
+
+  py::dict py_get_orders_cicero() { return py_orders_to_dict(orders_cicero_); }
 
   py::dict to_dict() {
     py::dict d;
@@ -56,6 +69,7 @@ public:
     d["state"] = py_get_state();
     d["orders"] = py_get_orders();
     d["messages"] = py_get_messages();
+    d["orders_cicero"] = py_get_orders_cicero();
     return d;
   }
 
@@ -75,6 +89,7 @@ private:
   GameState state_;
   std::unordered_map<Power, std::vector<Order>> orders_;
   std::map<uint64_t, Message> messages_;
+  std::unordered_map<Power, std::vector<Order>> orders_cicero_;
 };
 
 } // namespace dipcc
